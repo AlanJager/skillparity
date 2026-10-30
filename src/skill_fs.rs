@@ -80,6 +80,22 @@ pub fn install_claude_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<Clau
     })
 }
 
+pub fn install_codex_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<CodexInstall, String> {
+    let skill_name = read_skill_name(skill_dir)?;
+    let dest = sandbox_dir.join(".agents").join("skills").join(&skill_name);
+    copy_skill_tree(skill_dir, &dest)
+        .map_err(|err| format!("failed to install Codex skill: {err}"))?;
+    Ok(CodexInstall { skill_name, dest })
+}
+
+pub fn install_grok_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<GrokInstall, String> {
+    let skill_name = read_skill_name(skill_dir)?;
+    let dest = sandbox_dir.join(".grok").join("skills").join(&skill_name);
+    copy_skill_tree(skill_dir, &dest)
+        .map_err(|err| format!("failed to install Grok skill: {err}"))?;
+    Ok(GrokInstall { skill_name, dest })
+}
+
 pub fn install_cursor_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<CursorInstall, String> {
     let skill_name = read_skill_name(skill_dir)?;
     let dirs = vec![
@@ -121,6 +137,18 @@ pub struct ClaudeInstall {
     pub skill_name: String,
     pub dest: PathBuf,
     pub settings_path: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct CodexInstall {
+    pub skill_name: String,
+    pub dest: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct GrokInstall {
+    pub skill_name: String,
+    pub dest: PathBuf,
 }
 
 #[derive(Debug)]
@@ -289,6 +317,51 @@ mod tests {
         assert!(allow.iter().any(|v| v == "Read"));
         assert!(allow.iter().any(|v| v == "Write"));
         assert!(allow.iter().any(|v| v == "Skill"));
+    }
+
+    #[test]
+    fn install_codex_and_grok_skills_skip_fixtures() {
+        let skill = tempfile::tempdir().unwrap();
+        let sandbox = tempfile::tempdir().unwrap();
+        fs::write(
+            skill.path().join("SKILL.md"),
+            "---\nname: summarize-pr\n---\n\n# summarize\n",
+        )
+        .unwrap();
+        fs::write(skill.path().join("notes.md"), "notes\n").unwrap();
+        fs::create_dir(skill.path().join("fixtures")).unwrap();
+        fs::write(skill.path().join("fixtures").join("secret.txt"), "nope\n").unwrap();
+        fs::write(skill.path().join("parity.yaml"), "tasks: []\n").unwrap();
+
+        let codex = install_codex_skill(skill.path(), sandbox.path()).unwrap();
+        let grok = install_grok_skill(skill.path(), sandbox.path()).unwrap();
+        assert_eq!(codex.skill_name, "summarize-pr");
+        assert_eq!(grok.skill_name, "summarize-pr");
+        assert_eq!(
+            codex.dest,
+            sandbox
+                .path()
+                .join(".agents")
+                .join("skills")
+                .join("summarize-pr")
+        );
+        assert_eq!(
+            grok.dest,
+            sandbox
+                .path()
+                .join(".grok")
+                .join("skills")
+                .join("summarize-pr")
+        );
+        for root in [&codex.dest, &grok.dest] {
+            assert!(root.join("SKILL.md").is_file(), "{}", root.display());
+            assert_eq!(
+                fs::read_to_string(root.join("notes.md")).unwrap(),
+                "notes\n"
+            );
+            assert!(!root.join("fixtures").exists());
+            assert!(!root.join("parity.yaml").exists());
+        }
     }
 
     #[test]

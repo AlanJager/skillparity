@@ -75,3 +75,37 @@ jobs:
           name: parity-report-cursor
           path: reports/cursor/parity-report.json
           if-no-files-found: ignore
+
+  codex-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run SkillParity (codex)
+        continue-on-error: true
+        run: cargo run --locked --quiet -- run --skill examples/summarize-pr --parity examples/summarize-pr/parity.yaml --harness codex --ci --skip-ok --out reports/codex
+      - name: Upload codex parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report-codex
+          path: reports/codex/parity-report.json
+          if-no-files-found: ignore
+
+  grok-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run SkillParity (grok)
+        continue-on-error: true
+        run: cargo run --locked --quiet -- run --skill examples/summarize-pr --parity examples/summarize-pr/parity.yaml --harness grok --ci --skip-ok --out reports/grok
+      - name: Upload grok parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report-grok
+          path: reports/grok/parity-report.json
+          if-no-files-found: ignore
