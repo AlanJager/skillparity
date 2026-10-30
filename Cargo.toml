@@ -1,0 +1,22 @@
+[package]
+name = "skillparity"
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.85"
+description = "CLI for multi-harness skill behavioral parity — SKILL.md as unit under test"
+license = "MIT"
+repository = "https://github.com/AlanJager/skillparity"
+readme = "README.md"
+
+[[bin]]
+name = "skillparity"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+regex = "1.11"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+tempfile = "3.14"
+which = "6.0"

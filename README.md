@@ -1,32 +1,53 @@
 # SkillParity
 
-**CI gate for skill authors:** the same `SKILL.md` + YAML tasks, asserted across harnesses (Claude Code / Cursor / Codex / …) — did it trigger, call the right tools, and produce the right artifact?
+**CI gate for skill authors:** the same `SKILL.md` + YAML tasks, asserted across harnesses (Claude Code / Cursor / …) — did it trigger, call the right tools, and produce the right artifact?
 
-Static lint for skills is a red ocean. SkillParity fills the **behavioral** hole after AAIF / first-class skills: a **harness × skill** matrix, not another marketplace.
+Static lint for skills is a red ocean. SkillParity fills the **behavioral** hole: a **harness × skill** matrix, not another marketplace.
+
+The CLI is a Rust binary. It replaces the Node 0.2.0 implementation and keeps the same `examples/summarize-pr` tasks, harnesses, assertions, and report shape.
 
 ## Quick start
 
+Requires Rust 1.85+ (stable is fine).
+
 ```bash
-npm test
+cargo test
 ```
 
 That runs unit tests, then the mock harness on `examples/summarize-pr` (`--ci`). The mock run prints `3 pass`.
 
 ```bash
-node bin/skillparity.js run \
+cargo run -- run \
   --skill examples/summarize-pr \
   --parity examples/summarize-pr/parity.yaml \
   --harness mock --ci
 ```
 
-Other harnesses:
+Release binary:
 
 ```bash
-npm run test:claude   # --skip-ok; green when claude or credentials are absent
-npm run test:cursor   # same for the Cursor Agent CLI
+cargo build --release
+./target/release/skillparity run \
+  --skill examples/summarize-pr \
+  --parity examples/summarize-pr/parity.yaml \
+  --harness mock --ci
 ```
 
-Report: terminal matrix + `parity-report.json`.
+Other harnesses (green when the CLI or credentials are absent):
+
+```bash
+cargo run -- run \
+  --skill examples/summarize-pr \
+  --parity examples/summarize-pr/parity.yaml \
+  --harness claude --ci --skip-ok
+
+cargo run -- run \
+  --skill examples/summarize-pr \
+  --parity examples/summarize-pr/parity.yaml \
+  --harness cursor --ci --skip-ok
+```
+
+Report: terminal matrix + `parity-report.json` (or `--out <dir>/parity-report.json`).
 
 ## Harnesses
 
@@ -70,7 +91,7 @@ agent -p "<prompt>" --force --trust \
 
 The skill is installed at `.cursor/skills/<name>/` and `.agents/skills/<name>/`. Project permissions go in `.cursor/cli.json`. `readToolCall` / `writeToolCall` (and similar) events are normalized to `Read` / `Write` so `parity.yaml` stays harness-neutral. `--force` is what applies file writes in print mode; `--trust` skips the workspace trust prompt.
 
-Codex is not wired. Cursor is the second harness and already skips without a binary or `CURSOR_API_KEY`. A Codex adapter can follow the same shape later (`codex` CLI, its own skill roots) without changing `parity.yaml`.
+Codex is not wired. A Codex adapter can follow the same shape later without changing `parity.yaml`.
 
 ## Example skill
 
@@ -87,9 +108,18 @@ Codex is not wired. Cursor is the second harness and already skips without a bin
 | `expect.called_tools` | optional list |
 | `expect.not_called_tools` | optional list |
 | `expect.files_exist` | optional list (empty = must not leave `summary.md`) |
-| `expect.stdout_matches` | optional regex |
+| `expect.stdout_matches` | optional regex (`(?i)` is honored) |
 
-Each task runs in `os.tmpdir()` sandbox. No private keys.
+Each task runs in a temp sandbox. No private keys.
+
+## CLI
+
+```text
+skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor] [--ci] [--skip-ok] [--out <dir>]
+skillparity help
+```
+
+Exit codes: `0` success (or all-skip with `--skip-ok`), `1` a task failed under `--ci` (or every task skipped without `--skip-ok`), `2` usage or input error.
 
 ## Non-goals
 
@@ -100,7 +130,7 @@ Each task runs in `os.tmpdir()` sandbox. No private keys.
 
 ## Status
 
-- **Mock** is the CI gate. `npm test` runs unit tests plus `examples/summarize-pr` × mock (`3 pass`) and the GitHub Action job `mock-parity` uploads `parity-report.json`.
-- **Claude** is a real adapter (skill install, `claude -p` print mode, stream-json / transcript parsing), not a stub. It skips cleanly when the CLI or credentials are missing. This repo does not ship a key, and the adapter is not executed against a live model here.
+- **Mock** is the CI gate. `cargo test` runs unit tests plus `examples/summarize-pr` × mock (`3 pass`). The GitHub Action job `mock-parity` uploads `parity-report.json`.
+- **Claude** is a real adapter (skill install, `claude -p` print mode, stream-json / transcript parsing), not a stub. It skips cleanly when the CLI or credentials are missing. This repo does not ship a key.
 - **Cursor** is the second harness (documented `agent -p` flags and `tool_call` parsing) with the same skip-without-secrets behavior. `claude-parity` and `cursor-parity` in CI use `--skip-ok` and `continue-on-error`, so a missing CLI stays green and a live failure does not block the mock job.
-- Not in this repo: marketplace, hosted eval farm, Codex adapter, golden tasks beyond `summarize-pr`.
+- Not in this repo: marketplace, hosted eval farm, Codex adapter, golden tasks beyond `summarize-pr`, the retired Node CLI.
