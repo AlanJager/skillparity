@@ -1,0 +1,7 @@
+{"kind":"ToolCall","data":{"id":"c1","name":"read_file","arguments":{"path":"skills/summarize-pr/SKILL.md"}}}
+{"kind":"tool_result","data":{"id":"c1","name":"read_file","ok":true,"result":{"path":"skills/summarize-pr/SKILL.md"}}}
+{"kind":"ToolCall","data":{"id":"c2","name":"read_file","arguments":{"path":"pr.diff"}}}
+{"kind":"ToolCall","data":{"id":"c3","name":"write_file","arguments":{"path":"summary.md","content":"# Update src/hello.js"}}}
+{"kind":"Output","data":{"text":"Wrote ","role":"assistant"}}
+{"kind":"Output","data":{"text":"summary.md","role":"assistant"}}
+{"kind":"State","data":{"state":"completed","detail":{"session_id":"sess-waner"}}}

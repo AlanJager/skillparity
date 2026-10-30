@@ -4,6 +4,7 @@ pub mod cursor;
 pub mod grok;
 pub mod mock;
 pub mod parse;
+pub mod waner;
 
 use crate::model::AdapterResult;
 use crate::process::CommandRunner;
@@ -53,8 +54,16 @@ pub fn run_harness(
                 runner,
             ))
         }
+        "waner" => {
+            let prompt = task.prompt_text();
+            Ok(waner::run_task(
+                waner::WanerRequest::new(sandbox_dir, skill_dir, &prompt, env)
+                    .with_skill_name(skill_name),
+                runner,
+            ))
+        }
         other => Err(format!(
-            "Unknown harness \"{other}\". Available: mock, claude, cursor, codex, grok"
+            "Unknown harness \"{other}\". Available: mock, claude, cursor, codex, grok, waner"
         )),
     }
 }

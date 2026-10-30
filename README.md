@@ -1,6 +1,6 @@
 # SkillParity
 
-**CI gate for skill authors:** the same `SKILL.md` + YAML tasks, asserted across harnesses (Claude Code / Cursor / Codex / Grok) — did it trigger, call the right tools, and produce the right artifact?
+**CI gate for skill authors:** the same `SKILL.md` + YAML tasks, asserted across harnesses (Claude Code / Cursor / Codex / Grok / Waner) — did it trigger, call the right tools, and produce the right artifact?
 
 Static lint for skills is a red ocean. SkillParity fills the **behavioral** hole: a **harness × skill** matrix, not another marketplace.
 
@@ -55,6 +55,11 @@ cargo run -- run \
   --skill examples/summarize-pr \
   --parity examples/summarize-pr/parity.yaml \
   --harness grok --ci --skip-ok
+
+cargo run -- run \
+  --skill examples/summarize-pr \
+  --parity examples/summarize-pr/parity.yaml \
+  --harness waner --ci --skip-ok
 ```
 
 Report: terminal matrix + `parity-report.json` (or `--out <dir>/parity-report.json`).
@@ -68,8 +73,9 @@ Report: terminal matrix + `parity-report.json` (or `--out <dir>/parity-report.js
 | `cursor` | `cursor-agent` or a Cursor-identified `agent`, plus a login or `CURSOR_API_KEY` | CLI missing, `agent` is not Cursor, or no credentials |
 | `codex` | `codex` on `PATH` whose `exec --help` describes the Codex CLI, plus `CODEX_API_KEY` / `CODEX_ACCESS_TOKEN` or `codex login status` | CLI missing, help is not Codex, or no credentials |
 | `grok` | `grok` on `PATH` whose help describes the xAI CLI (`--single` or `--output-format`), plus `XAI_API_KEY` or a non-empty `auth.json` | CLI missing, help is not Grok, or no credentials |
+| `waner` | `waner` on `PATH` whose `query --help` describes `query` plus `--json`, `--workspace`, or `--auto-approve`, plus `WANER_API_KEY` / `WANER_AUTH_TOKEN` / `WANER_TOKEN` or a non-empty auth file under `WANER_HOME` or `~/.waner` | CLI missing, help is not Waner, or no model credentials |
 
-No network secrets are required for `mock`. Claude, Cursor, Codex, and Grok skip with an explicit reason when the CLI or credentials are absent, so CI stays green without them. A rejected key (`Invalid API key`) is a failure, not a skip.
+No network secrets are required for `mock`. Claude, Cursor, Codex, Grok, and Waner skip with an explicit reason when the CLI or credentials are absent, so CI stays green without them. A rejected key (`Invalid API key`) is a failure, not a skip. A Waner query that reports the model or credentials are unavailable, and that did not call tools, is a skip.
 
 `--skip-ok` (with `--ci`) exits 0 when every task was skipped. Without it, an all-skip run exits 1. One real failure under `--ci` is still exit 1.
 
@@ -131,6 +137,19 @@ grok --no-auto-update \
 
 `streaming-json` events are JSONL. `toolName` values such as `read_file` / `write_file` normalize to `Read` / `Write`. Text chunks are concatenated. `XAI_API_KEY` counts as credentials. Otherwise a non-empty `auth.json` under `$GROK_HOME` or `~/.grok` does (the file is not read, only checked for presence). The query uses the same `SKILLPARITY_TIMEOUT_MS` bound. A live auth failure such as `AuthorizationRequired` with no tool calls is a skip, not a pass.
 
+### Waner
+
+One-shot Waner query. The skill is installed at `<sandbox>/skills/<name>/SKILL.md`. Supporting files are copied with it. `fixtures/` and `parity.yaml` are left out. Waner also discovers `~/.waner/skills`; SkillParity does not install there, so the run stays inside the sandbox and the workspace copy is the one under test.
+
+```bash
+waner query --json --workspace <sandbox> \
+  --auto-approve --auto-approve-destructive "<prompt>"
+```
+
+`--auto-approve` lets ordinary tool calls proceed. `--auto-approve-destructive` is included so a headless sandbox write is not blocked on a prompt. `--json` is one RuntimeEvent per line (`kind` / `type` of `ToolCall`, `ToolResult`, `Output`, `Error`, and the same names in snake_case). `read_file` / `write_file` normalize to `Read` / `Write`, so `parity.yaml` stays harness-neutral. Reading `skills/<name>/SKILL.md` counts as the skill triggering.
+
+`WANER_API_KEY`, `WANER_AUTH_TOKEN`, or `WANER_TOKEN` counts as credentials. Otherwise a non-empty `auth.json` or `credentials.json` under `$WANER_HOME` or `~/.waner` does, or `config.json` when it contains a non-empty API key. A config that only names a model is not enough. `waner query --help` is capped at 8s. The query uses `SKILLPARITY_TIMEOUT_MS` (default 180s). A live `model unavailable` or logged-out message with no tool calls is a skip, not a pass.
+
 ## Example skill
 
 `examples/summarize-pr` — on “summarize this PR”, read local `pr.diff`, write `summary.md` (title + 3 bullets). `parity.yaml` has three tasks: trigger+write, no-trigger on unrelated ask, missing `pr.diff` → clear failure message.
@@ -153,7 +172,7 @@ Each task runs in a temp sandbox. No private keys.
 ## CLI
 
 ```text
-skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor|codex|grok] [--ci] [--skip-ok] [--out <dir>]
+skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor|codex|grok|waner] [--ci] [--skip-ok] [--out <dir>]
 skillparity help
 ```
 
@@ -179,5 +198,6 @@ skillparity help
 - **Cursor** is the second harness (documented `agent -p` flags and `tool_call` parsing) with the same skip-without-secrets behavior.
 - **Codex** runs `codex exec --json` with workspace-write and `approval_policy=never`. It skips when the CLI or credentials are missing.
 - **Grok** runs `grok -p` with `streaming-json` and `--always-approve`. It skips when the CLI is missing or when neither `XAI_API_KEY` nor `auth.json` is present.
-- `claude-parity`, `cursor-parity`, `codex-parity`, and `grok-parity` in CI use `--skip-ok` and `continue-on-error`, so a missing CLI stays green and a live failure does not block the mock job.
-- Not in this repo: marketplace, hosted eval farm, Waner, golden tasks beyond `summarize-pr`, the retired Node CLI.
+- **Waner** runs `waner query --json` with `--workspace`, `--auto-approve`, and `--auto-approve-destructive`. The skill is installed at `<sandbox>/skills/<name>/`. It skips when the CLI is missing or when model credentials are unavailable.
+- `claude-parity`, `cursor-parity`, `codex-parity`, `grok-parity`, and `waner-parity` in CI use `--skip-ok` and `continue-on-error`, so a missing CLI stays green and a live failure does not block the mock job.
+- Not in this repo: marketplace, hosted eval farm, golden tasks beyond `summarize-pr`, the retired Node CLI.

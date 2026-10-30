@@ -7,13 +7,13 @@ pub const USAGE: &str = "\
 skillparity — multi-harness skill behavioral parity
 
 Usage:
-  skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor|codex|grok] [--ci] [--skip-ok]
+  skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor|codex|grok|waner] [--ci] [--skip-ok]
   skillparity help
 
 Options:
   --skill     Directory containing SKILL.md
   --parity    parity.yaml task file
-  --harness   mock | claude | cursor | codex | grok (default: mock)
+  --harness   mock | claude | cursor | codex | grok | waner (default: mock)
   --ci        non-zero exit when a task fails, or when every task was skipped
   --skip-ok   with --ci, exit 0 when every task was skipped
   --out       directory for parity-report.json (default: cwd)
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn usage_documents_harnesses_and_exit_codes() {
-        assert!(USAGE.contains("mock|claude|cursor|codex|grok"));
+        assert!(USAGE.contains("mock|claude|cursor|codex|grok|waner"));
         assert!(USAGE.contains("--ci"));
         assert!(USAGE.contains("--skip-ok"));
         assert!(USAGE.contains("Exit codes"));
