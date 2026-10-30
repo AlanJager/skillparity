@@ -1,5 +1,7 @@
 pub mod claude;
+pub mod codex;
 pub mod cursor;
+pub mod grok;
 pub mod mock;
 pub mod parse;
 
@@ -35,8 +37,24 @@ pub fn run_harness(
                 runner,
             ))
         }
+        "codex" => {
+            let prompt = task.prompt_text();
+            Ok(codex::run_task(
+                codex::CodexRequest::new(sandbox_dir, skill_dir, &prompt, env)
+                    .with_skill_name(skill_name),
+                runner,
+            ))
+        }
+        "grok" => {
+            let prompt = task.prompt_text();
+            Ok(grok::run_task(
+                grok::GrokRequest::new(sandbox_dir, skill_dir, &prompt, env)
+                    .with_skill_name(skill_name),
+                runner,
+            ))
+        }
         other => Err(format!(
-            "Unknown harness \"{other}\". Available: mock, claude, cursor"
+            "Unknown harness \"{other}\". Available: mock, claude, cursor, codex, grok"
         )),
     }
 }

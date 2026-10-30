@@ -224,6 +224,7 @@ pub struct RecordedCall {
     pub args: Vec<String>,
     pub cwd: Option<PathBuf>,
     pub stdin: StdinMode,
+    pub timeout: Duration,
 }
 
 #[cfg(test)]
@@ -252,6 +253,7 @@ impl CommandRunner for StaticRunner {
             args: spec.args.clone(),
             cwd: spec.cwd.clone(),
             stdin: spec.stdin,
+            timeout: spec.timeout,
         });
         if let Some(hook) = &self.on_run {
             hook();

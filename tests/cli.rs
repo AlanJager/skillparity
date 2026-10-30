@@ -43,8 +43,8 @@ fn mock_matrix_prints_3_pass_and_writes_report() {
 }
 
 #[test]
-fn claude_and_cursor_skip_cleanly_and_skip_ok_keeps_ci_green() {
-    for harness in ["claude", "cursor"] {
+fn optional_harnesses_skip_cleanly_and_skip_ok_keeps_ci_green() {
+    for harness in ["claude", "cursor", "codex", "grok"] {
         let out = tempfile::tempdir().unwrap();
         let ok = Command::new(bin())
             .current_dir(root())
@@ -52,6 +52,9 @@ fn claude_and_cursor_skip_cleanly_and_skip_ok_keeps_ci_green() {
             .env_remove("ANTHROPIC_API_KEY")
             .env_remove("ANTHROPIC_AUTH_TOKEN")
             .env_remove("CURSOR_API_KEY")
+            .env_remove("CODEX_API_KEY")
+            .env_remove("CODEX_ACCESS_TOKEN")
+            .env_remove("XAI_API_KEY")
             .args([
                 "run",
                 "--skill",
@@ -90,6 +93,9 @@ fn claude_and_cursor_skip_cleanly_and_skip_ok_keeps_ci_green() {
             .env_remove("ANTHROPIC_API_KEY")
             .env_remove("ANTHROPIC_AUTH_TOKEN")
             .env_remove("CURSOR_API_KEY")
+            .env_remove("CODEX_API_KEY")
+            .env_remove("CODEX_ACCESS_TOKEN")
+            .env_remove("XAI_API_KEY")
             .args([
                 "run",
                 "--skill",

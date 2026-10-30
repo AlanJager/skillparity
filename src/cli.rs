@@ -7,16 +7,24 @@ pub const USAGE: &str = "\
 skillparity — multi-harness skill behavioral parity
 
 Usage:
-  skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor] [--ci] [--skip-ok]
+  skillparity run --skill <dir> --parity <yaml> [--harness mock|claude|cursor|codex|grok] [--ci] [--skip-ok]
   skillparity help
 
 Options:
   --skill     Directory containing SKILL.md
   --parity    parity.yaml task file
-  --harness   mock | claude | cursor (default: mock)
-  --ci        exit 1 on any fail (skip does not fail unless all skipped)
+  --harness   mock | claude | cursor | codex | grok (default: mock)
+  --ci        non-zero exit when a task fails, or when every task was skipped
   --skip-ok   with --ci, exit 0 when every task was skipped
   --out       directory for parity-report.json (default: cwd)
+
+Exit codes:
+  0  tasks passed; or --ci was omitted; or --ci --skip-ok and every task skipped
+  1  --ci and a task failed, or --ci without --skip-ok and every task skipped
+  2  usage error, unknown command, or unreadable skill/parity input
+
+A skipped task is not a failure. --skip-ok changes only the all-skipped case.
+One real failure under --ci is still exit 1, even when other tasks skipped.
 
 Example:
   skillparity run \\
@@ -162,6 +170,15 @@ fn dispatch(parsed: Parsed) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn usage_documents_harnesses_and_exit_codes() {
+        assert!(USAGE.contains("mock|claude|cursor|codex|grok"));
+        assert!(USAGE.contains("--ci"));
+        assert!(USAGE.contains("--skip-ok"));
+        assert!(USAGE.contains("Exit codes"));
+        assert!(USAGE.contains("every task skipped"));
+    }
 
     #[test]
     fn help_and_unknown_command() {
