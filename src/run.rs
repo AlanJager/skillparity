@@ -21,10 +21,10 @@ pub struct RunOptions {
 pub fn execute(opts: RunOptions) -> Result<i32, String> {
     if !matches!(
         opts.harness.as_str(),
-        "mock" | "claude" | "cursor" | "codex" | "grok"
+        "mock" | "claude" | "cursor" | "codex" | "grok" | "waner"
     ) {
         return Err(format!(
-            "Unknown harness \"{}\". Available: mock, claude, cursor, codex, grok",
+            "Unknown harness \"{}\". Available: mock, claude, cursor, codex, grok, waner",
             opts.harness
         ));
     }

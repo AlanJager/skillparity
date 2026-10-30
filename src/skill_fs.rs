@@ -96,6 +96,15 @@ pub fn install_grok_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<GrokIn
     Ok(GrokInstall { skill_name, dest })
 }
 
+pub fn install_waner_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<WanerInstall, String> {
+    let skill_name = read_skill_name(skill_dir)?;
+    // Workspace `skills/<name>/` wins over `~/.waner/skills` and stays inside the sandbox.
+    let dest = sandbox_dir.join("skills").join(&skill_name);
+    copy_skill_tree(skill_dir, &dest)
+        .map_err(|err| format!("failed to install Waner skill: {err}"))?;
+    Ok(WanerInstall { skill_name, dest })
+}
+
 pub fn install_cursor_skill(skill_dir: &Path, sandbox_dir: &Path) -> Result<CursorInstall, String> {
     let skill_name = read_skill_name(skill_dir)?;
     let dirs = vec![
@@ -147,6 +156,12 @@ pub struct CodexInstall {
 
 #[derive(Debug)]
 pub struct GrokInstall {
+    pub skill_name: String,
+    pub dest: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct WanerInstall {
     pub skill_name: String,
     pub dest: PathBuf,
 }
@@ -362,6 +377,42 @@ mod tests {
             assert!(!root.join("fixtures").exists());
             assert!(!root.join("parity.yaml").exists());
         }
+    }
+
+    #[test]
+    fn install_waner_skill_uses_workspace_skills_and_skips_fixtures() {
+        let skill = tempfile::tempdir().unwrap();
+        let sandbox = tempfile::tempdir().unwrap();
+        fs::create_dir(skill.path().join("references")).unwrap();
+        fs::write(
+            skill.path().join("SKILL.md"),
+            "---\nname: summarize-pr\n---\n\n# summarize\n",
+        )
+        .unwrap();
+        fs::write(skill.path().join("references").join("guide.md"), "guide\n").unwrap();
+        fs::write(skill.path().join("notes.md"), "notes\n").unwrap();
+        fs::create_dir(skill.path().join("fixtures")).unwrap();
+        fs::write(skill.path().join("fixtures").join("secret.txt"), "nope\n").unwrap();
+        fs::write(skill.path().join("parity.yaml"), "tasks: []\n").unwrap();
+
+        let installed = install_waner_skill(skill.path(), sandbox.path()).unwrap();
+        assert_eq!(installed.skill_name, "summarize-pr");
+        assert_eq!(
+            installed.dest,
+            sandbox.path().join("skills").join("summarize-pr")
+        );
+        assert!(installed.dest.join("SKILL.md").is_file());
+        assert_eq!(
+            fs::read_to_string(installed.dest.join("notes.md")).unwrap(),
+            "notes\n"
+        );
+        assert_eq!(
+            fs::read_to_string(installed.dest.join("references").join("guide.md")).unwrap(),
+            "guide\n"
+        );
+        assert!(!installed.dest.join("fixtures").exists());
+        assert!(!installed.dest.join("parity.yaml").exists());
+        assert!(!sandbox.path().join(".waner").exists());
     }
 
     #[test]
