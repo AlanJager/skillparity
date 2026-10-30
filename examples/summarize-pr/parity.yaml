@@ -1,0 +1,29 @@
+# SkillParity tasks for examples/summarize-pr
+skill: summarize-pr
+tasks:
+  - id: trigger-and-write
+    prompt: Please summarize this PR using the local pr.diff file.
+    fixture: fixtures/with-diff
+    expect:
+      skill_triggered: true
+      called_tools:
+        - Read
+        - Write
+      files_exist:
+        - summary.md
+
+  - id: no-trigger-unrelated
+    prompt: What's the weather in Tokyo today?
+    expect:
+      skill_triggered: false
+      not_called_tools:
+        - Write
+      files_exist: []
+
+  - id: missing-diff-fails-clearly
+    prompt: Summarize the pull request from pr.diff.
+    # no fixture → empty sandbox, pr.diff absent
+    expect:
+      skill_triggered: true
+      stdout_matches: "(?i)(missing|empty|not found|no such)"
+      files_exist: []

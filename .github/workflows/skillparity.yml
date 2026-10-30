@@ -1,0 +1,78 @@
+name: SkillParity
+
+on:
+  push:
+    paths:
+      - "**.md"
+      - "examples/**"
+      - "src/**"
+      - "test/**"
+      - "bin/**"
+      - "package.json"
+      - ".github/workflows/skillparity.yml"
+  pull_request:
+    paths:
+      - "**.md"
+      - "examples/**"
+      - "src/**"
+      - "test/**"
+      - "bin/**"
+      - "package.json"
+      - ".github/workflows/skillparity.yml"
+  workflow_dispatch:
+
+jobs:
+  mock-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run SkillParity (mock)
+        run: npm test
+      - name: Upload parity-report.json
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report
+          path: parity-report.json
+
+  # Optional harnesses. Missing CLIs and missing credentials skip with
+  # --skip-ok so the job stays green. continue-on-error keeps a real
+  # adapter failure from blocking the mock gate.
+  claude-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run SkillParity (claude)
+        continue-on-error: true
+        run: node bin/skillparity.js run --skill examples/summarize-pr --parity examples/summarize-pr/parity.yaml --harness claude --ci --skip-ok --out reports/claude
+      - name: Upload claude parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report-claude
+          path: reports/claude/parity-report.json
+          if-no-files-found: ignore
+
+  cursor-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run SkillParity (cursor)
+        continue-on-error: true
+        run: node bin/skillparity.js run --skill examples/summarize-pr --parity examples/summarize-pr/parity.yaml --harness cursor --ci --skip-ok --out reports/cursor
+      - name: Upload cursor parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report-cursor
+          path: reports/cursor/parity-report.json
+          if-no-files-found: ignore
